@@ -133,7 +133,7 @@ class ResponseUtils {
    * @param {object} healthData - Health check data
    */
   static healthCheck(res, healthData) {
-    const isHealthy = healthData.blockchain?.connected && healthData.cache?.connected;
+    const isHealthy = (healthData.blockchain && healthData.blockchain.connected) && (healthData.cache && healthData.cache.connected);
     const statusCode = isHealthy ? 200 : 503;
     
     const response = {

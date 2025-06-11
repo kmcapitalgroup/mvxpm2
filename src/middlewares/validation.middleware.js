@@ -22,7 +22,7 @@ const validate = (schema, property = 'body') => {
         const errors = error.details.map(detail => ({
           field: detail.path.join('.'),
           message: detail.message,
-          value: detail.context?.value
+          value: detail.context && detail.context.value ? detail.context.value : undefined
         }));
         
         logger.warn('Validation failed', {

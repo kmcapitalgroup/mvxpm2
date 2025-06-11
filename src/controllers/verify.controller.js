@@ -37,7 +37,7 @@ class VerifyController {
       const response = {
         verified: verificationResult.verified,
         timestamp: verificationResult.timestamp,
-        metadata: verificationResult.timestamp?.metadata || {},
+        metadata: verificationResult.timestamp && verificationResult.timestamp.metadata ? verificationResult.timestamp.metadata : {},
         source: verificationResult.source
       };
       
@@ -158,7 +158,7 @@ class VerifyController {
       const response = {
         verified: verificationResult.verified,
         timestamp: verificationResult.timestamp,
-        metadata: verificationResult.timestamp?.metadata || {},
+        metadata: verificationResult.timestamp && verificationResult.timestamp.metadata ? verificationResult.timestamp.metadata : {},
         dataHash: computedHash,
         source: verificationResult.source
       };
@@ -425,10 +425,10 @@ class VerifyController {
         verified: verificationResult.verified,
         hash: hash,
         timestamp: verificationResult.timestamp,
-        transactionHash: verificationResult.timestamp?.transactionHash,
-        blockNumber: verificationResult.timestamp?.blockNumber,
-        blockTimestamp: verificationResult.timestamp?.blockTimestamp,
-        metadata: verificationResult.timestamp?.metadata || {},
+        transactionHash: verificationResult.timestamp && verificationResult.timestamp.transactionHash ? verificationResult.timestamp.transactionHash : undefined,
+        blockNumber: verificationResult.timestamp && verificationResult.timestamp.blockNumber ? verificationResult.timestamp.blockNumber : undefined,
+        blockTimestamp: verificationResult.timestamp && verificationResult.timestamp.blockTimestamp ? verificationResult.timestamp.blockTimestamp : undefined,
+        metadata: verificationResult.timestamp && verificationResult.timestamp.metadata ? verificationResult.timestamp.metadata : {},
         source: verificationResult.source,
         cached: false,
         responseTime: Date.now() - startTime

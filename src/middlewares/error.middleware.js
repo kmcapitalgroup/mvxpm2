@@ -1,6 +1,6 @@
-const ResponseUtils = require('../utils/response');
 const logger = require('../utils/logger');
 const config = require('../config');
+const ResponseUtils = require('../utils/response');
 
 /**
  * Global error handling middleware
@@ -21,7 +21,7 @@ const errorHandler = (err, req, res, next) => {
     method: req.method,
     ip: req.ip,
     userAgent: req.get('User-Agent'),
-    apiKey: req.apiKey?.key || 'none'
+    apiKey: req.apiKey && req.apiKey.key ? req.apiKey.key : 'none'
   });
 
   // Determine error type and response

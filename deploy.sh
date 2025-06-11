@@ -132,7 +132,7 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo
     log_info "Collez votre commande PM2 link complète (ex: pm2 link secret_key public_key):"
-    read -p PM2_LINK_PARAMS
+    read -p "PM2 Link: " PM2_LINK_PARAMS
     
     if [[ -n "$PM2_LINK_PARAMS" ]]; then
         log_info "🔗 Configuration du lien PM2 monitoring..."

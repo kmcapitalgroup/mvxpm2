@@ -71,7 +71,9 @@ if [[ ! -f ".env" ]]; then
     log_warning "Fichier .env manquant. Copie depuis .env.example..."
     cp .env.example .env
     log_warning "⚠️  IMPORTANT: Configurez le fichier .env avant de continuer!"
-    read -p "Appuyez sur Entrée après avoir configuré .env..."
+    log_info "Ouverture automatique de nano pour éditer .env..."
+    nano .env
+    log_info "✅ Configuration .env terminée, poursuite du déploiement..."
 fi
 
 # Vérifier que le script principal existe
@@ -86,19 +88,46 @@ log_info "📋 Vérification de la version Node.js..."
 NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
 log_info "Version Node.js détectée: v$NODE_VERSION"
 
-if [ "$NODE_VERSION" -lt 14 ]; then
-    log_warning "Attention: Node.js v$NODE_VERSION détecté"
-    log_warning "Certaines dépendances peuvent nécessiter Node.js 14+"
-    log_info "🔄 Exécution du script de mise à jour des dépendances..."
+if [ "$NODE_VERSION" -lt 18 ]; then
+    log_warning "⚠️  Node.js v$NODE_VERSION détecté - Version insuffisante!"
+    log_warning "Ce projet nécessite Node.js 18+ pour fonctionner correctement."
+    log_info "🔄 Mise à jour automatique de Node.js..."
     
-    if [ -f "update-dependencies.sh" ]; then
-        chmod +x update-dependencies.sh
-        ./update-dependencies.sh
+    # Vérifier si nvm est disponible
+    if command -v nvm &> /dev/null; then
+        log_info "📦 Utilisation de nvm pour installer Node.js 18..."
+        nvm install 18
+        nvm use 18
+        log_info "✅ Node.js mis à jour via nvm"
+    elif command -v curl &> /dev/null && [ -f /etc/debian_version ]; then
+        log_info "📦 Installation de Node.js 18 via NodeSource (Ubuntu/Debian)..."
+        curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+        log_info "✅ Node.js mis à jour via apt"
+    elif command -v yum &> /dev/null; then
+        log_info "📦 Installation de Node.js 18 via NodeSource (CentOS/RHEL)..."
+        curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+        sudo yum install -y nodejs
+        log_info "✅ Node.js mis à jour via yum"
     else
-        log_error "Script update-dependencies.sh non trouvé"
-        log_info "💡 Installation manuelle des dépendances compatibles..."
+        log_error "❌ Impossible de mettre à jour Node.js automatiquement"
+        log_error "Veuillez installer Node.js 18+ manuellement:"
+        log_error "- Via nvm: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash"
+        log_error "- Ou télécharger depuis: https://nodejs.org/"
+        exit 1
+    fi
+    
+    # Vérifier la nouvelle version
+    NEW_NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
+    if [ "$NEW_NODE_VERSION" -ge 18 ]; then
+        log_info "✅ Node.js v$NEW_NODE_VERSION installé avec succès"
+        # Nettoyer et réinstaller les dépendances
+        log_info "🧹 Nettoyage et réinstallation des dépendances..."
         rm -rf node_modules package-lock.json
-        npm install
+        npm install --production
+    else
+        log_error "❌ Échec de la mise à jour Node.js"
+        exit 1
     fi
 fi
 

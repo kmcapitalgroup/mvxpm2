@@ -62,8 +62,12 @@ mkdir -p logs
 mkdir -p temp
 mkdir -p cache
 
-# Installer les dépendances
+# Nettoyer le cache npm et installer les dépendances
+log_info "🧹 Nettoyage du cache npm..."
+npm cache clean --force
+
 log_info "📦 Installation des dépendances..."
+rm -rf node_modules package-lock.json
 npm install --production
 
 # Vérifier le fichier .env
@@ -121,12 +125,15 @@ if [ "$NODE_VERSION" -lt 18 ]; then
     NEW_NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
     if [ "$NEW_NODE_VERSION" -ge 18 ]; then
         log_info "✅ Node.js v$NEW_NODE_VERSION installé avec succès"
-        # Nettoyer et réinstaller les dépendances
-        log_info "🧹 Nettoyage et réinstallation des dépendances..."
-        rm -rf node_modules package-lock.json
+        # Nettoyer complètement npm et réinstaller les dépendances
+        log_info "🧹 Nettoyage complet npm après mise à jour Node.js..."
+        npm cache clean --force
+        rm -rf node_modules package-lock.json ~/.npm
+        log_info "📦 Réinstallation des dépendances avec la nouvelle version Node.js..."
         npm install --production
     else
         log_error "❌ Échec de la mise à jour Node.js"
+        log_error "Version actuelle: v$NEW_NODE_VERSION, requis: v18+"
         exit 1
     fi
 fi

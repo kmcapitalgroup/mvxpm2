@@ -1,4 +1,5 @@
 const redis = require('redis');
+const { promisify } = require('util');
 const config = require('../config');
 const logger = require('../utils/logger');
 
@@ -10,17 +11,24 @@ class CacheService {
 
   async initialize() {
     try {
-      // Create Redis client
+      // Parse Redis URL for v3.x compatibility
+      const url = new URL(config.redis.url);
       const clientOptions = {
-        url: config.redis.url,
-        socket: {
-          reconnectStrategy: (retries) => {
-            if (retries > 10) {
-              logger.error('Redis reconnection failed after 10 attempts');
-              return new Error('Redis reconnection failed');
-            }
-            return Math.min(retries * 50, 1000);
+        host: url.hostname,
+        port: parseInt(url.port) || 6379,
+        retry_strategy: (options) => {
+          if (options.error && options.error.code === 'ECONNREFUSED') {
+            logger.error('Redis server refused connection');
           }
+          if (options.total_retry_time > 1000 * 60 * 60) {
+            logger.error('Redis retry time exhausted');
+            return new Error('Retry time exhausted');
+          }
+          if (options.attempt > 10) {
+            logger.error('Redis reconnection failed after 10 attempts');
+            return undefined;
+          }
+          return Math.min(options.attempt * 100, 3000);
         }
       };
 
@@ -50,8 +58,15 @@ class CacheService {
         logger.warn('Redis client disconnected');
       });
 
-      // Connect to Redis
-      await this.client.connect();
+      // Promisify Redis methods for v3.x compatibility
+      this.getAsync = promisify(this.client.get).bind(this.client);
+      this.setAsync = promisify(this.client.set).bind(this.client);
+      this.setexAsync = promisify(this.client.setex).bind(this.client);
+      this.delAsync = promisify(this.client.del).bind(this.client);
+      this.existsAsync = promisify(this.client.exists).bind(this.client);
+      this.expireAsync = promisify(this.client.expire).bind(this.client);
+      this.infoAsync = promisify(this.client.info).bind(this.client);
+      this.dbsizeAsync = promisify(this.client.dbsize).bind(this.client);
       
       logger.info('✅ Cache service initialized successfully');
     } catch (error) {
@@ -76,7 +91,7 @@ class CacheService {
       const serializedValue = JSON.stringify(value);
       const expiration = ttl || config.redis.ttl;
       
-      await this.client.setEx(key, expiration, serializedValue);
+      await this.setexAsync(key, expiration, serializedValue);
       
       logger.debug('Cache set', { key, ttl: expiration });
       return true;
@@ -98,7 +113,7 @@ class CacheService {
         return null;
       }
 
-      const value = await this.client.get(key);
+      const value = await this.getAsync(key);
       
       if (value === null) {
         logger.debug('Cache miss', { key });
@@ -124,7 +139,7 @@ class CacheService {
         return false;
       }
 
-      const result = await this.client.del(key);
+      const result = await this.delAsync(key);
       
       logger.debug('Cache delete', { key, deleted: result > 0 });
       return result > 0;
@@ -145,7 +160,7 @@ class CacheService {
         return false;
       }
 
-      const result = await this.client.exists(key);
+      const result = await this.existsAsync(key);
       return result === 1;
     } catch (error) {
       logger.error('Cache exists error:', error);
@@ -164,7 +179,7 @@ class CacheService {
         return false;
       }
 
-      const result = await this.client.expire(key, ttl);
+      const result = await this.expireAsync(key, ttl);
       return result === 1;
     } catch (error) {
       logger.error('Cache expire error:', error);
@@ -181,30 +196,28 @@ class CacheService {
       if (!this.connected) {
         return {
           connected: false,
-          memory: 'N/A',
-          keys: 0
+          keys: 0,
+          memory: 'N/A'
         };
       }
 
-      const info = await this.client.info('memory');
-      const dbSize = await this.client.dbSize();
+      const info = await this.infoAsync('memory');
+      const dbSize = await this.dbsizeAsync();
       
-      // Parse memory info
       const memoryMatch = info.match(/used_memory_human:([^\r\n]+)/);
-      const memory = memoryMatch ? memoryMatch[1] : 'Unknown';
+      const memory = memoryMatch ? memoryMatch[1] : 'N/A';
 
       return {
         connected: this.connected,
-        memory,
-        keys: dbSize
+        keys: dbSize,
+        memory: memory.trim()
       };
     } catch (error) {
       logger.error('Cache stats error:', error);
       return {
         connected: false,
-        memory: 'Error',
         keys: 0,
-        error: error.message
+        memory: 'Error'
       };
     }
   }

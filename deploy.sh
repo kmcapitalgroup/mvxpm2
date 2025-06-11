@@ -39,6 +39,34 @@ fi
 
 log_info "🚀 Déploiement en mode: $ENV"
 
+# Vérifier que npm est installé
+if ! command -v npm &> /dev/null; then
+    log_error "npm n'est pas installé. Installation de Node.js et npm..."
+    
+    # Détecter le système d'exploitation et installer Node.js/npm
+    if [ -f /etc/debian_version ]; then
+        log_info "📦 Installation de Node.js et npm via NodeSource (Ubuntu/Debian)..."
+        curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+    elif [ -f /etc/redhat-release ]; then
+        log_info "📦 Installation de Node.js et npm via NodeSource (CentOS/RHEL)..."
+        curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+        sudo yum install -y nodejs
+    else
+        log_error "❌ Système d'exploitation non supporté pour l'installation automatique"
+        log_error "Veuillez installer Node.js et npm manuellement depuis: https://nodejs.org/"
+        exit 1
+    fi
+    
+    # Vérifier que npm est maintenant disponible
+    if ! command -v npm &> /dev/null; then
+        log_error "❌ Échec de l'installation de npm"
+        exit 1
+    fi
+    
+    log_success "✅ Node.js et npm installés avec succès"
+fi
+
 # Vérifier que PM2 est installé
 if ! command -v pm2 &> /dev/null; then
     log_error "PM2 n'est pas installé. Installation..."

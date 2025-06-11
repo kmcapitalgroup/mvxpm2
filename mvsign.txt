@@ -1,0 +1,1492 @@
+# 🚀 Guide Complet - Intégration Bubble + Microservice Docker MultiversX
+
+## 📋 Table des Matières
+
+1. [Architecture & Vue d'ensemble](#architecture)
+2. [Prérequis & Installation](#prerequisites)
+3. [Configuration Docker & Microservice](#docker-setup)
+4. [Configuration Bubble API Connector](#bubble-api)
+5. [Intégration xPortal Wallet](#xportal-integration)
+6. [Workflows Bubble](#bubble-workflows)
+7. [Structure de Données](#data-structure)
+8. [Interface Utilisateur](#user-interface)
+9. [Déploiement Production](#production-deployment)
+10. [Monitoring & Maintenance](#monitoring)
+11. [Exemples Concrets](#examples)
+12. [Troubleshooting](#troubleshooting)
+
+---
+
+## 🏗️ Architecture & Vue d'ensemble {#architecture}
+
+### Diagramme d'Architecture
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Bubble App    │───▶│  Microservice    │───▶│  xPortal Wallet │───▶│   MultiversX    │
+│                 │    │   (Docker VPS)   │    │ (User Signature)│    │   Blockchain    │
+│ • UI/UX         │◀───│ • Tx Preparation │    │ • Private Keys  │    │ • Immutable     │
+│ • User Data     │    │ • API Gateway    │    │ • Signing       │    │ • Verification  │
+│ • Workflows     │    │ • Validation     │    │ • Broadcasting  │    │ • Consensus     │
+└─────────────────┘    └──────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### Flux de Données Principal
+
+1. **Bubble** : Interface utilisateur et logique métier
+2. **Docker Microservice** : Préparation des transactions et validation
+3. **xPortal Wallet** : Signature sécurisée par l'utilisateur
+4. **MultiversX Blockchain** : Stockage immutable et vérification
+
+### Avantages de cette Architecture
+
+- ✅ **Sécurité** : Clés privées restent dans le wallet utilisateur
+- ✅ **Scalabilité** : Microservice Docker indépendant
+- ✅ **Flexibilité** : API REST standard entre composants
+- ✅ **Maintenance** : Séparation claire des responsabilités
+- ✅ **Performance** : Cache Redis pour optimisation
+
+---
+
+## 🔧 Prérequis & Installation {#prerequisites}
+
+### Prérequis Système
+
+```bash
+# Vérifier Docker
+docker --version
+# Docker version 24.0.0 ou supérieur
+
+# Vérifier Docker Compose
+docker-compose --version
+# Docker Compose version 2.0.0 ou supérieur
+
+# Vérifier les ports disponibles
+netstat -an | grep :3000
+# Aucun résultat = port libre
+```
+
+### Structure du Projet
+
+```
+signature/
+├── .env                    # Variables d'environnement
+├── .env.example           # Template des variables
+├── docker-compose.yml     # Configuration Docker
+├── Dockerfile            # Image du microservice
+├── package.json          # Dépendances Node.js
+├── server.js            # Point d'entrée
+├── src/
+│   ├── app.js           # Application Express
+│   ├── config/          # Configuration
+│   ├── controllers/     # Logique métier
+│   ├── middlewares/     # Middlewares Express
+│   ├── routes/          # Routes API
+│   ├── services/        # Services externes
+│   └── utils/           # Utilitaires
+├── logs/                # Logs applicatifs
+└── cache/              # Cache Redis
+```
+
+### Installation Initiale
+
+```bash
+# 1. Cloner ou naviguer vers le projet
+cd /Users/tikapo/Desktop/KMCPGDEV/sensei/signature
+
+# 2. Copier le fichier d'environnement
+cp .env.example .env
+
+# 3. Éditer les variables d'environnement
+nano .env
+
+# 4. Construire et démarrer les services
+docker-compose up -d --build
+
+# 5. Vérifier le démarrage
+docker-compose ps
+docker-compose logs -f
+```
+
+---
+
+## 🐳 Configuration Docker & Microservice {#docker-setup}
+
+### Variables d'Environnement (.env)
+
+```env
+# ===========================================
+# CONFIGURATION MULTIVERSX
+# ===========================================
+MULTIVERSX_NETWORK=devnet
+MULTIVERSX_API_URL=https://devnet-api.multiversx.com
+MULTIVERSX_GATEWAY_URL=https://devnet-gateway.multiversx.com
+MULTIVERSX_EXPLORER_URL=https://devnet-explorer.multiversx.com
+
+# Pour production, utiliser :
+# MULTIVERSX_NETWORK=mainnet
+# MULTIVERSX_API_URL=https://api.multiversx.com
+# MULTIVERSX_GATEWAY_URL=https://gateway.multiversx.com
+# MULTIVERSX_EXPLORER_URL=https://explorer.multiversx.com
+
+# ===========================================
+# CONFIGURATION API
+# ===========================================
+API_KEY=dev_sk_1234567890abcdef_secure_key_change_in_production
+PORT=3000
+NODE_ENV=development
+
+# ===========================================
+# CONFIGURATION REDIS (CACHE)
+# ===========================================
+REDIS_URL=redis://redis:6379
+REDIS_PASSWORD=
+REDIS_DB=0
+CACHE_TTL=3600
+
+# ===========================================
+# CONFIGURATION LOGS
+# ===========================================
+LOG_LEVEL=info
+LOG_FILE=./logs/app.log
+ERROR_LOG_FILE=./logs/error.log
+
+# ===========================================
+# CONFIGURATION SÉCURITÉ
+# ===========================================
+CORS_ORIGIN=*
+RATE_LIMIT_WINDOW=900000
+RATE_LIMIT_MAX=100
+```
+
+### Docker Compose Configuration
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # Microservice Principal
+  multiversx-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multiversx-timestamp-service
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=${PORT:-3000}
+      - API_KEY=${API_KEY}
+      - MULTIVERSX_NETWORK=${MULTIVERSX_NETWORK}
+      - MULTIVERSX_API_URL=${MULTIVERSX_API_URL}
+      - MULTIVERSX_GATEWAY_URL=${MULTIVERSX_GATEWAY_URL}
+      - REDIS_URL=${REDIS_URL}
+    volumes:
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - multiversx-network
+
+  # Cache Redis
+  redis:
+    image: redis:7-alpine
+    container_name: multiversx-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - multiversx-network
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  multiversx-network:
+    driver: bridge
+```
+
+### Endpoints API Disponibles
+
+| Méthode | Endpoint | Description | Timing |
+|---------|----------|-------------|--------|
+| `GET` | `/api/v1/health` | Health check du service | Monitoring |
+| `POST` | `/api/v1/timestamp/prepare` | Préparer une transaction | Avant signature |
+| `POST` | `/api/v1/timestamp/register` | Enregistrer transaction signée | Après signature |
+| `GET` | `/api/v1/timestamp/transaction/:hash` | Statut d'une transaction | Pendant confirmation |
+| `POST` | `/api/v1/timestamp/batch/prepare` | Préparer un lot de transactions | Avant signature batch |
+| `POST` | `/api/v1/timestamp/batch/register` | Enregistrer lot signé | Après signature batch |
+| `GET` | `/api/v1/verify/:hash` | Vérifier un horodatage | Vérification |
+| `POST` | `/api/v1/verify/batch` | Vérifier plusieurs horodatages | Vérification batch |
+| `GET` | `/api/v1/stats` | Statistiques du service | Analytics |
+
+### Commandes Docker Utiles
+
+```bash
+# Démarrer les services
+docker-compose up -d
+
+# Voir les logs en temps réel
+docker-compose logs -f multiversx-service
+
+# Redémarrer un service
+docker-compose restart multiversx-service
+
+# Reconstruire et redémarrer
+docker-compose up -d --build multiversx-service
+
+# Arrêter tous les services
+docker-compose down
+
+# Nettoyer les volumes (ATTENTION : perte de données)
+docker-compose down -v
+
+# Vérifier l'état des services
+docker-compose ps
+
+# Accéder au shell du conteneur
+docker-compose exec multiversx-service sh
+
+# Vérifier les ressources utilisées
+docker stats
+```
+
+---
+
+## 🔌 Configuration Bubble API Connector {#bubble-api}
+
+### Étape 1 : Créer l'API Connector
+
+**Configuration de Base :**
+- **API Name** : `MultiversX_Timestamp_Service`
+- **Server URL** : 
+  - Développement : `http://localhost:3000`
+  - Production : `https://api.votre-domaine.com`
+- **Authentication** : `Private key in header`
+- **Key name** : `X-API-Key`
+- **Key value** : `dev_sk_1234567890abcdef_secure_key` (dev) ou votre clé production
+
+### Étape 2 : Configuration des Appels API
+
+#### Call 1 : prepare_timestamp
+
+```json
+{
+  "name": "prepare_timestamp",
+  "use_as": "Action",
+  "data_type": "JSON",
+  "method": "POST",
+  "url": "/api/v1/timestamp/prepare",
+  "body": {
+    "data": "<data>",
+    "metadata": {
+      "userId": "<user_id>",
+      "actionType": "<action_type>",
+      "level": "<level>",
+      "description": "<description>",
+      "timestamp": "<timestamp>"
+    }
+  },
+  "parameters": [
+    {"name": "data", "type": "text", "required": true},
+    {"name": "user_id", "type": "text", "required": true},
+    {"name": "action_type", "type": "text", "required": true},
+    {"name": "level", "type": "text", "required": false},
+    {"name": "description", "type": "text", "required": false},
+    {"name": "timestamp", "type": "text", "required": false}
+  ]
+}
+```
+
+**Réponse Attendue :**
+```json
+{
+  "success": true,
+  "result": {
+    "transactionData": {
+      "nonce": 42,
+      "value": "0",
+      "receiver": "erd1qqqqqqqqqqqqqpgqak8zt22wl2ph4tswtyc39namqx6ysa2sd8ss4xmlj",
+      "sender": "USER_WALLET_ADDRESS",
+      "gasPrice": 1000000000,
+      "gasLimit": 60000000,
+      "data": "dGltZXN0YW1wQDEyMzQ1Njc4OTA=",
+      "chainID": "D",
+      "version": 1
+    },
+    "dataHash": "3b4c5f6a8d9e2f1c7a8b9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0",
+    "estimatedCost": {
+      "egld": "0.00006",
+      "usd": "0.001"
+    },
+    "preparationId": "prep_1234567890abcdef"
+  }
+}
+```
+
+#### Call 2 : register_signed_transaction
+
+```json
+{
+  "name": "register_signed_transaction",
+  "use_as": "Action",
+  "data_type": "JSON",
+  "method": "POST",
+  "url": "/api/v1/timestamp/register",
+  "body": {
+    "transactionHash": "<tx_hash>",
+    "dataHash": "<data_hash>",
+    "userAddress": "<wallet_address>",
+    "originalData": "<original_data>",
+    "preparationId": "<preparation_id>",
+    "metadata": {
+      "userId": "<user_id>",
+      "actionType": "<action_type>",
+      "level": "<level>",
+      "description": "<description>"
+    }
+  },
+  "parameters": [
+    {"name": "tx_hash", "type": "text", "required": true},
+    {"name": "data_hash", "type": "text", "required": true},
+    {"name": "wallet_address", "type": "text", "required": true},
+    {"name": "original_data", "type": "text", "required": true},
+    {"name": "preparation_id", "type": "text", "required": true},
+    {"name": "user_id", "type": "text", "required": true},
+    {"name": "action_type", "type": "text", "required": true},
+    {"name": "level", "type": "text", "required": false},
+    {"name": "description", "type": "text", "required": false}
+  ]
+}
+```
+
+#### Call 3 : get_transaction_status
+
+```json
+{
+  "name": "get_transaction_status",
+  "use_as": "Data",
+  "data_type": "JSON",
+  "method": "GET",
+  "url": "/api/v1/timestamp/transaction/[tx_hash]",
+  "path_parameters": [
+    {"name": "tx_hash", "type": "text", "required": true}
+  ]
+}
+```
+
+#### Call 4 : prepare_batch_timestamp
+
+```json
+{
+  "name": "prepare_batch_timestamp",
+  "use_as": "Action",
+  "data_type": "JSON",
+  "method": "POST",
+  "url": "/api/v1/timestamp/batch/prepare",
+  "body": {
+    "items": "<batch_items>",
+    "batchMetadata": {
+      "userId": "<user_id>",
+      "batchType": "<batch_type>",
+      "description": "<description>"
+    }
+  },
+  "parameters": [
+    {"name": "batch_items", "type": "text", "required": true},
+    {"name": "user_id", "type": "text", "required": true},
+    {"name": "batch_type", "type": "text", "required": false},
+    {"name": "description", "type": "text", "required": false}
+  ]
+}
+```
+
+### Test de Connectivité
+
+```bash
+# Test simple avec curl
+curl -X GET \
+  http://localhost:3000/api/v1/health \
+  -H "X-API-Key: dev_sk_1234567890abcdef_secure_key"
+
+# Réponse attendue :
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "uptime": 3600,
+  "version": "1.0.0",
+  "services": {
+    "redis": "connected",
+    "multiversx": "connected"
+  }
+}
+```
+
+---
+
+## 📱 Intégration xPortal Wallet {#xportal-integration}
+
+### Étape 1 : Scripts MultiversX dans Bubble
+
+**Settings → SEO/metatags → Script in the header :**
+
+```html
+<!-- MultiversX SDK Web -->
+<script src="https://unpkg.com/@multiversx/sdk-dapp@latest/out/index.js"></script>
+<script src="https://unpkg.com/@multiversx/sdk-core@latest/out/index.js"></script>
+<script src="https://unpkg.com/@multiversx/sdk-web-wallet-provider@latest/out/index.js"></script>
+
+<!-- Configuration globale MultiversX -->
+<script>
+window.MultiversXConfig = {
+    // Configuration réseau
+    chainId: 'D', // 'D' pour devnet, '1' pour mainnet
+    apiUrl: 'https://devnet-api.multiversx.com',
+    gatewayUrl: 'https://devnet-gateway.multiversx.com',
+    explorerUrl: 'https://devnet-explorer.multiversx.com',
+    
+    // Configuration wallet
+    walletConnectBridge: 'https://walletconnect.multiversx.com',
+    walletConnectProjectId: 'votre-project-id', // Optionnel
+    
+    // Configuration application
+    appName: 'Bubble MultiversX App',
+    appUrl: window.location.origin,
+    appIcon: window.location.origin + '/favicon.ico'
+};
+
+// Initialisation globale
+window.MultiversXInitialized = false;
+window.userWallets = {};
+</script>
+```
+
+### Étape 2 : HTML Element pour Wallet
+
+```html
+<div id="wallet-connector" class="wallet-container">
+  <!-- Bouton de connexion -->
+  <button id="connect-wallet-btn" class="wallet-button" style="display: flex;">
+    <img src="https://xportal.com/logo.svg" width="20" height="20" alt="xPortal">
+    <span>Connect xPortal Wallet</span>
+  </button>
+  
+  <!-- Informations wallet connecté -->
+  <div id="wallet-info" class="wallet-info" style="display: none;">
+    <div class="wallet-details">
+      <img src="https://xportal.com/logo.svg" width="16" height="16" alt="xPortal">
+      <span id="wallet-address" class="wallet-address"></span>
+      <span id="wallet-balance" class="wallet-balance"></span>
+    </div>
+    <div class="wallet-actions">
+      <button id="disconnect-btn" class="disconnect-btn">Disconnect</button>
+      <button id="refresh-balance-btn" class="refresh-btn">↻</button>
+    </div>
+  </div>
+  
+  <!-- Statut de connexion -->
+  <div id="wallet-status" class="wallet-status">
+    <span id="status-text">Not connected</span>
+    <div id="status-indicator" class="status-indicator offline"></div>
+  </div>
+</div>
+
+<style>
+.wallet-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.wallet-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #23F7DD 0%, #1DD9C3 100%);
+  color: #000000;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 44px;
+}
+
+.wallet-button:hover {
+  background: linear-gradient(135deg, #1DD9C3 0%, #17C2A8 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(35, 247, 221, 0.3);
+}
+
+.wallet-button:active {
+  transform: translateY(0);
+}
+
+.wallet-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.wallet-details {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wallet-address {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  color: #374151;
+  background: #ffffff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  flex: 1;
+}
+
+.wallet-balance {
+  font-size: 12px;
+  color: #059669;
+  font-weight: 600;
+  background: #d1fae5;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.wallet-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.disconnect-btn {
+  padding: 6px 12px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.disconnect-btn:hover {
+  background: #dc2626;
+}
+
+.refresh-btn {
+  padding: 6px 8px;
+  background: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  background: #4b5563;
+  transform: rotate(180deg);
+}
+
+.wallet-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: background 0.3s;
+}
+
+.status-indicator.online {
+  background: #10b981;
+  box-shadow: 0 0 4px rgba(16, 185, 129, 0.5);
+}
+
+.status-indicator.offline {
+  background: #ef4444;
+}
+
+.status-indicator.connecting {
+  background: #f59e0b;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .wallet-container {
+    padding: 12px;
+  }
+  
+  .wallet-button {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  .wallet-address {
+    font-size: 11px;
+  }
+}
+</style>
+```
+
+### Étape 3 : JavaScript Wallet Manager (Toolbox)
+
+```javascript
+/**
+ * Gestionnaire de Wallet MultiversX pour utilisateurs individuels
+ * Chaque utilisateur Bubble a son propre wallet xPortal
+ */
+class UserWalletManager {
+  constructor(userId) {
+    this.userId = userId;
+    this.provider = null;
+    this.address = null;
+    this.balance = null;
+    this.isConnected = false;
+    this.isConnecting = false;
+    this.network = window.MultiversXConfig.chainId;
+    
+    // Événements personnalisés
+    this.events = {
+      connected: [],
+      disconnected: [],
+      error: [],
+      balanceUpdated: []
+    };
+  }
+
+  // Méthode de connexion
+  async connect() {
+    if (this.isConnecting) {
+      throw new Error('Connection already in progress');
+    }
+    
+    this.isConnecting = true;
+    this.updateStatus('connecting', 'Connecting to xPortal...');
+    
+    try {
+      // Vérifier si xPortal est installé
+      if (!window.MultiversX || !window.MultiversX.ExtensionProvider) {
+        throw new Error('xPortal Wallet extension not installed. Please install it from https://xportal.com');
+      }
+
+      // Initialiser le provider
+      this.provider = window.MultiversX.ExtensionProvider.getInstance();
+      
+      if (!this.provider) {
+        throw new Error('Failed to initialize xPortal provider');
+      }
+
+      // Initialiser et demander la connexion
+      await this.provider.init();
+      const address = await this.provider.login({
+        callbackUrl: window.location.href,
+        token: `login-${this.userId}-${Date.now()}`
+      });
+      
+      if (!address) {
+        throw new Error('Failed to get wallet address');
+      }
+
+      // Stocker les informations
+      this.address = address;
+      this.isConnected = true;
+      this.isConnecting = false;
+      
+      // Récupérer le solde
+      await this.updateBalance();
+      
+      // Stocker dans le registre global
+      window.userWallets = window.userWallets || {};
+      window.userWallets[this.userId] = this;
+      
+      // Mettre à jour l'UI
+      this.updateUI();
+      this.updateStatus('online', 'Connected');
+      
+      // Déclencher les événements
+      this.emit('connected', {
+        address: this.address,
+        userId: this.userId,
+        balance: this.balance,
+        network: this.network
+      });
+      
+      // Informer Bubble
+      if (typeof bubble_fn_onWalletConnected === 'function') {
+        bubble_fn_onWalletConnected({
+          address: this.address,
+          userId: this.userId,
+          connected: true,
+          balance: this.balance,
+          network: this.network
+        });
+      }
+      
+      return this.address;
+      
+    } catch (error) {
+      this.isConnecting = false;
+      this.updateStatus('offline', 'Connection failed');
+      
+      console.error('Wallet connection error:', error);
+      
+      this.emit('error', error);
+      
+      if (typeof bubble_fn_onWalletError === 'function') {
+        bubble_fn_onWalletError({
+          error: error.message,
+          userId: this.userId
+        });
+      }
+      
+      throw error;
+    }
+  }
+
+  // Méthode de déconnexion
+  async disconnect() {
+    try {
+      if (this.provider && this.isConnected) {
+        await this.provider.logout();
+      }
+      
+      // Réinitialiser l'état
+      this.address = null;
+      this.balance = null;
+      this.isConnected = false;
+      this.provider = null;
+      
+      // Supprimer du registre global
+      if (window.userWallets && window.userWallets[this.userId]) {
+        delete window.userWallets[this.userId];
+      }
+      
+      // Mettre à jour l'UI
+      this.updateUI();
+      this.updateStatus('offline', 'Disconnected');
+      
+      // Déclencher les événements
+      this.emit('disconnected', {
+        userId: this.userId
+      });
+      
+      // Informer Bubble
+      if (typeof bubble_fn_onWalletDisconnected === 'function') {
+        bubble_fn_onWalletDisconnected({
+          userId: this.userId
+        });
+      }
+      
+    } catch (error) {
+      console.error('Wallet disconnection error:', error);
+      this.emit('error', error);
+    }
+  }
+
+  // Mettre à jour le solde
+  async updateBalance() {
+    if (!this.isConnected || !this.address) {
+      return null;
+    }
+    
+    try {
+      const response = await fetch(`${window.MultiversXConfig.apiUrl}/accounts/${this.address}`);
+      const accountData = await response.json();
+      
+      // Convertir de wei vers EGLD
+      const balanceWei = accountData.balance || '0';
+      const balanceEGLD = (parseInt(balanceWei) / Math.pow(10, 18)).toFixed(4);
+      
+      this.balance = {
+        wei: balanceWei,
+        egld: balanceEGLD,
+        formatted: `${balanceEGLD} EGLD`
+      };
+      
+      // Mettre à jour l'UI
+      this.updateBalanceUI();
+      
+      // Déclencher l'événement
+      this.emit('balanceUpdated', this.balance);
+      
+      return this.balance;
+      
+    } catch (error) {
+      console.error('Failed to update balance:', error);
+      return null;
+    }
+  }
+
+  // Signer et envoyer une transaction
+  async signAndSendTransaction(transactionData) {
+    if (!this.isConnected || !this.provider) {
+      throw new Error('Wallet not connected');
+    }
+
+    try {
+      // Créer l'objet transaction
+      const { Transaction } = window.MultiversX;
+      const transaction = new Transaction({
+        nonce: transactionData.nonce,
+        value: transactionData.value || '0',
+        receiver: transactionData.receiver,
+        sender: this.address,
+        gasPrice: transactionData.gasPrice,
+        gasLimit: transactionData.gasLimit,
+        data: transactionData.data,
+        chainID: transactionData.chainID,
+        version: transactionData.version || 1
+      });
+
+      // Signer la transaction
+      await this.provider.signTransaction(transaction);
+      
+      // Envoyer la transaction
+      const txHash = await this.provider.sendTransaction(transaction);
+      
+      // Mettre à jour le solde après un délai
+      setTimeout(() => this.updateBalance(), 5000);
+      
+      return {
+        hash: txHash,
+        transaction: transaction,
+        userAddress: this.address,
+        timestamp: new Date().toISOString()
+      };
+      
+    } catch (error) {
+      console.error('Transaction signing/sending error:', error);
+      throw error;
+    }
+  }
+
+  // Mettre à jour l'interface utilisateur
+  updateUI() {
+    const connectBtn = document.getElementById('connect-wallet-btn');
+    const walletInfo = document.getElementById('wallet-info');
+    const addressSpan = document.getElementById('wallet-address');
+    
+    if (!connectBtn || !walletInfo || !addressSpan) {
+      return; // Éléments UI non trouvés
+    }
+    
+    if (this.isConnected && this.address) {
+      connectBtn.style.display = 'none';
+      walletInfo.style.display = 'flex';
+      
+      // Formater l'adresse
+      const shortAddress = this.address.substring(0, 8) + '...' + this.address.substring(this.address.length - 6);
+      addressSpan.textContent = shortAddress;
+      addressSpan.title = this.address; // Tooltip avec l'adresse complète
+      
+      this.updateBalanceUI();
+    } else {
+      connectBtn.style.display = 'flex';
+      walletInfo.style.display = 'none';
+    }
+  }
+
+  // Mettre à jour l'affichage du solde
+  updateBalanceUI() {
+    const balanceSpan = document.getElementById('wallet-balance');
+    if (balanceSpan && this.balance) {
+      balanceSpan.textContent = this.balance.formatted;
+    }
+  }
+
+  // Mettre à jour le statut
+  updateStatus(status, message) {
+    const statusText = document.getElementById('status-text');
+    const statusIndicator = document.getElementById('status-indicator');
+    
+    if (statusText) {
+      statusText.textContent = message;
+    }
+    
+    if (statusIndicator) {
+      statusIndicator.className = `status-indicator ${status}`;
+    }
+  }
+
+  // Système d'événements
+  on(event, callback) {
+    if (this.events[event]) {
+      this.events[event].push(callback);
+    }
+  }
+
+  emit(event, data) {
+    if (this.events[event]) {
+      this.events[event].forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(`Error in event callback for ${event}:`, error);
+        }
+      });
+    }
+  }
+}
+
+// Fonctions globales pour Bubble
+window.connectUserWallet = async function(userId) {
+  try {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    
+    // Vérifier si déjà connecté
+    const existingWallet = window.getUserWallet(userId);
+    if (existingWallet && existingWallet.isConnected) {
+      return existingWallet;
+    }
+    
+    const walletManager = new UserWalletManager(userId);
+    await walletManager.connect();
+    return walletManager;
+  } catch (error) {
+    console.error('Failed to connect user wallet:', error);
+    throw error;
+  }
+};
+
+window.getUserWallet = function(userId) {
+  return window.userWallets && window.userWallets[userId] || null;
+};
+
+window.disconnectUserWallet = async function(userId) {
+  const wallet = window.getUserWallet(userId);
+  if (wallet) {
+    await wallet.disconnect();
+  }
+};
+
+window.refreshUserWalletBalance = async function(userId) {
+  const wallet = window.getUserWallet(userId);
+  if (wallet) {
+    return await wallet.updateBalance();
+  }
+  return null;
+};
+
+// Event listeners pour l'interface
+document.addEventListener('DOMContentLoaded', function() {
+  const connectBtn = document.getElementById('connect-wallet-btn');
+  const disconnectBtn = document.getElementById('disconnect-btn');
+  const refreshBtn = document.getElementById('refresh-balance-btn');
+  
+  if (connectBtn) {
+    connectBtn.addEventListener('click', async () => {
+      try {
+        // Récupérer l'ID utilisateur depuis Bubble
+        const userId = typeof bubble_fn_getCurrentUserId === 'function' 
+          ? bubble_fn_getCurrentUserId() 
+          : 'default_user';
+        
+        await window.connectUserWallet(userId);
+      } catch (error) {
+        alert(`Connection failed: ${error.message}`);
+      }
+    });
+  }
+  
+  if (disconnectBtn) {
+    disconnectBtn.addEventListener('click', async () => {
+      try {
+        const userId = typeof bubble_fn_getCurrentUserId === 'function' 
+          ? bubble_fn_getCurrentUserId() 
+          : 'default_user';
+        
+        await window.disconnectUserWallet(userId);
+      } catch (error) {
+        console.error('Disconnection error:', error);
+      }
+    });
+  }
+  
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', async () => {
+      try {
+        const userId = typeof bubble_fn_getCurrentUserId === 'function' 
+          ? bubble_fn_getCurrentUserId() 
+          : 'default_user';
+        
+        await window.refreshUserWalletBalance(userId);
+      } catch (error) {
+        console.error('Balance refresh error:', error);
+      }
+    });
+  }
+});
+
+// Auto-reconnexion si wallet déjà connecté
+window.addEventListener('load', async function() {
+  try {
+    if (window.MultiversX && window.MultiversX.ExtensionProvider) {
+      const provider = window.MultiversX.ExtensionProvider.getInstance();
+      if (provider) {
+        await provider.init();
+        const isConnected = await provider.isConnected();
+        
+        if (isConnected) {
+          const userId = typeof bubble_fn_getCurrentUserId === 'function' 
+            ? bubble_fn_getCurrentUserId() 
+            : 'default_user';
+          
+          // Tentative de reconnexion automatique
+          try {
+            await window.connectUserWallet(userId);
+          } catch (error) {
+            console.log('Auto-reconnection failed:', error.message);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.log('Auto-reconnection check failed:', error.message);
+  }
+});
+```
+
+---
+
+## 🔄 Workflows Bubble {#bubble-workflows}
+
+### Workflow 1 : Connexion Wallet Utilisateur
+
+**Trigger :** `Button "Connect Wallet" is clicked AND Current User is logged in`
+
+**Conditions :**
+- Current User is logged in
+- Current User's Wallet_Connection is empty OR is_connected is "no"
+
+**Actions :**
+
+1. **Set State** : `wallet_connecting = yes`
+
+2. **Run JavaScript** :
+```javascript
+const userId = properties.current_user_id;
+
+try {
+  // Connecter le wallet
+  const walletManager = await window.connectUserWallet(userId);
+  
+  // Succès de connexion
+  bubble_fn_onWalletConnected({
+    address: walletManager.address,
+    userId: userId,
+    connected: true,
+    balance: walletManager.balance,
+    network: walletManager.network
+  });
+  
+} catch (error) {
+  // Erreur de connexion
+  bubble_fn_onWalletError({
+    error: error.message,
+    userId: userId
+  });
+}
+```
+
+3. **Create/Update Wallet_Connection** :
+- address = `Result of Step 2's address`
+- is_connected = `yes`
+- connection_date = `Current date/time`
+- last_activity = `Current date/time`
+- network = `Result of Step 2's network`
+- wallet_type = `"xportal"`
+- user = `Current User`
+
+4. **Set State** : 
+- `wallet_connecting = no`
+- `wallet_connected = yes`
+- `wallet_address = Result of Step 2's address`
+
+### Workflow 2 : Horodatage Simple
+
+**Trigger :** `Button "Timestamp Action" is clicked AND wallet_connected is "yes"`
+
+**Conditions :**
+- Input `action_data` is not empty
+- Input `action_type` is not empty
+- Current User's Wallet_Connection's is_connected is "yes"
+
+**Actions :**
+
+1. **Set State** : `timestamp_processing = yes`
+
+2. **API Call** : `MultiversX_Service - prepare_timestamp`
+   - data = `Input action_data's value`
+   - user_id = `Current User's unique id`
+   - action_type = `Dropdown action_type's value`
+   - level = `Input level's value`
+   - description = `Input description's value`
+   - timestamp = `Current date/time formatted as ISO`
+
+3. **Condition** : `Result of Step 2's success is "true"`
+
+4. **Run JavaScript** (Signature de la transaction) :
+```javascript
+const userId = properties.current_user_id;
+const transactionData = properties.prepare_result.result.transactionData;
+const dataHash = properties.prepare_result.result.dataHash;
+const preparationId = properties.prepare_result.result.preparationId;
+
+try {
+  // Récupérer le wallet de l'utilisateur
+  const wallet = window.getUserWallet(userId);
+  
+  if (!wallet || !wallet.isConnected) {
+    throw new Error('Wallet not connected');
+  }
+  
+  // Signer et envoyer la transaction
+  const signedTx = await wallet.signAndSendTransaction(transactionData);
+  
+  // Succès de signature
+  bubble_fn_onTransactionSigned({
+    txHash: signedTx.hash,
+    dataHash: dataHash,
+    preparationId: preparationId,
+    userAddress: signedTx.userAddress,
+    originalData: properties.action_data,
+    userId: userId
+  });
+  
+} catch (error) {
+  // Erreur de signature
+  bubble_fn_onTransactionError({
+    error: error.message,
+    userId: userId
+  });
+}
+```
+
+5. **API Call** : `MultiversX_Service - register_signed_transaction`
+   - tx_hash = `Result of Step 4's txHash`
+   - data_hash = `Result of Step 4's dataHash`
+   - wallet_address = `Result of Step 4's userAddress`
+   - original_data = `Result of Step 4's originalData`
+   - preparation_id = `Result of Step 4's preparationId`
+   - user_id = `Current User's unique id`
+   - action_type = `Dropdown action_type's value`
+   - level = `Input level's value`
+   - description = `Input description's value`
+
+6. **Create Timestamp_Record** :
+   - transaction_hash = `Result of Step 5's transaction_hash`
+   - data_hash = `Result of Step 5's data_hash`
+   - original_data = `Input action_data's value`
+   - action_type = `Dropdown action_type's value`
+   - level = `Input level's value`
+   - description = `Input description's value`
+   - status = `"pending"`
+   - explorer_url = `Result of Step 5's explorer_url`
+   - cost_egld = `Result of Step 5's cost_egld`
+   - cost_usd = `Result of Step 5's cost_usd`
+   - user = `Current User`
+   - is_batch_item = `no`
+
+7. **Update Wallet_Connection** :
+   - last_activity = `Current date/time`
+   - total_transactions = `Current User's Wallet_Connection's total_transactions + 1`
+   - total_cost_spent = `Current User's Wallet_Connection's total_cost_spent + Result of Step 5's cost_egld`
+
+8. **Set State** :
+   - `timestamp_processing = no`
+   - `last_timestamp_record = Result of Step 6`
+
+9. **Show Alert** : `"Transaction submitted successfully! Hash: " & Result of Step 5's transaction_hash`
+
+### Workflow 3 : Monitoring du Statut des Transactions
+
+**Trigger :** `Do every 15 seconds when Timestamp_Record's status is "pending"`
+
+**Conditions :**
+- Timestamp_Record's status is "pending"
+- Timestamp_Record's created_date > Current date/time - 24 hours
+
+**Actions :**
+
+1. **API Call** : `MultiversX_Service - get_transaction_status`
+   - tx_hash = `Current cell's Timestamp_Record's transaction_hash`
+
+2. **Condition** : `Result of Step 1's success is "true"`
+
+3. **Make changes to Timestamp_Record** :
+   - status = `Result of Step 1's result's status`
+   - block_number = `Result of Step 1's result's blockNumber`
+   - block_timestamp = `Result of Step 1's result's blockTimestamp converted to date`
+   - explorer_url = `Result of Step 1's result's explorerUrl`
+
+4. **Condition** : `Result of Step 1's result's status is "success"`
+
+5. **Send Email** (optionnel) :
+   - To = `Current cell's Timestamp_Record's user's email`
+   - Subject = `"Transaction Confirmed - " & Current cell's Timestamp_Record's action_type`
+   - Body = Template de confirmation avec détails
+
+### Workflow 4 : Traitement par Lot (Batch)
+
+**Trigger :** `Button "Process Batch" is clicked AND batch_items count ≥ 2`
+
+**Conditions :**
+- State `batch_items` count ≥ 2
+- Current User's Wallet_Connection's is_connected is "yes"
+- State `batch_processing` is "no"
+
+**Actions :**
+
+1. **Set State** :
+   - `batch_processing = yes`
+   - `batch_progress = 0`
+
+2. **API Call** : `MultiversX_Service - prepare_batch_timestamp`
+   - batch_items = `State batch_items formatted as JSON`
+   - user_id = `Current User's unique id`
+   - batch_type = `Dropdown batch_type's value`
+   - description = `Input batch_description's value`
+
+3. **Set State** : `batch_progress = 25`
+
+4. **Run JavaScript** (Signature du lot) :
+```javascript
+const userId = properties.current_user_id;
+const batchData = properties.batch_prepare_result.result;
+
+try {
+  const wallet = window.getUserWallet(userId);
+  
+  if (!wallet || !wallet.isConnected) {
+    throw new Error('Wallet not connected');
+  }
+  
+  // Signer la transaction batch
+  const signedBatchTx = await wallet.signAndSendTransaction(batchData.transactionData);
+  
+  bubble_fn_onBatchTransactionSigned({
+    txHash: signedBatchTx.hash,
+    batchId: batchData.batchId,
+    userAddress: signedBatchTx.userAddress,
+    totalItems: batchData.totalItems,
+    userId: userId
+  });
+  
+} catch (error) {
+  bubble_fn_onBatchTransactionError({
+    error: error.message,
+    userId: userId
+  });
+}
+```
+
+5. **Set State** : `batch_progress = 50`
+
+6. **API Call** : `MultiversX_Service - register_batch_transaction`
+   - tx_hash = `Result of Step 4's txHash`
+   - batch_id = `Result of Step 4's batchId`
+   - wallet_address = `Result of Step 4's userAddress`
+   - user_id = `Current User's unique id`
+
+7. **Create Batch_Record** :
+   - batch_id = `Result of Step 6's batch_id`
+   - transaction_hash = `Result of Step 6's transaction_hash`
+   - total_items = `Result of Step 6's total_items`
+   - successful_items = `0`
+   - failed_items = `0`
+   - total_cost_egld = `Result of Step 6's total_cost_egld`
+   - status = `"processing"`
+   - user = `Current User`
+
+8. **Set State** : `batch_progress = 75`
+
+9. **Schedule API Workflow** : `Process Batch Results`
+   - batch_record = `Result of Step 7`
+   - delay = `30 seconds`
+
+10. **Set State** :
+    - `batch_processing = no`
+    - `batch_progress = 100`
+    - `last_batch_record = Result of Step 7`
+
+### Workflow 5 : Déconnexion Wallet
+
+**Trigger :** `Button "Disconnect Wallet" is clicked`
+
+**Actions :**
+
+1. **Run JavaScript** :
+```javascript
+const userId = properties.current_user_id;
+
+try {
+  await window.disconnectUserWallet(userId);
+  
+  bubble_fn_onWalletDisconnected({
+    userId: userId
+  });
+  
+} catch (error) {
+  console.error('Disconnection error:', error);
+}
+```
+
+2. **Make changes to Current User's Wallet_Connection** :
+   - is_connected = `no`
+   - last_activity = `Current date/time`
+
+3. **Set State** :
+   - `wallet_connected = no`
+   - `wallet_address = empty`
+
+---
+
+## 📊 Structure de Données {#data-structure}
+
+### Data Type : Timestamp_Record
+
+**Description :** Enregistrement d'un horodatage sur la blockchain MultiversX
+
+**Fields :**
+
+| Field | Type | Index | Required | Description |
+|-------|------|-------|----------|-------------|
+| `transaction_hash` | text | ✅ | ✅ | Hash unique de la transaction blockchain |
+| `data_hash` | text | ✅ | ✅ | Hash SHA-256 des données horodatées |
+| `original_data` | text | | ✅ | Données originales horodatées |
+| `action_type` | text | ✅ | ✅ | Type d'action (level_up, achievement, score, etc.) |
+| `level` | text | | | Niveau associé à l'action |
+| `description` | text | | | Description détaillée de l'action |
+| `status` | text | ✅ | ✅ | Statut : "pending", "confirmed", "failed" |
+| `block_number` | number | | | Numéro du bloc blockchain |
+| `block_timestamp` | date | | | Timestamp du bloc blockchain |
+| `explorer_url` | text | | | URL vers l'explorateur blockchain |
+| `cost_egld` | number | | | Coût en EGLD |
+| `cost_usd` | number | | | Coût en USD (au moment de la transaction) |
+| `user` | User | ✅ | ✅ | Utilisateur propriétaire |
+| `batch_id` | text | ✅ | | ID du lot (si traitement par lot) |
+| `batch_position` | number | | | Position dans le lot |
+| `is_batch_item` | yes/no | | ✅ | Indique si c'est un élément de lot |
+| `preparation_id` | text | | | ID de préparation de la transaction |
+| `network` | text | | ✅ | Réseau MultiversX (devnet/mainnet) |
+| `created_date` | date | ✅ | ✅ | Date de création (built-in) |
+| `modified_date` | date | | ✅ | Date de modification (built-in) |
+
+**Privacy Rules :**
+- Utilisateur peut voir ses propres enregistrements
+- Admin peut voir tous les enregistrements
+- Lecture seule pour les utilisateurs normaux
+
+### Data Type : Wallet_Connection
+
+**Description :** Connexion wallet d'un utilisateur
+
+**Fields :**
+
+| Field | Type | Index | Unique | Required | Description |
+|-------|------|-------|--------|----------|-------------|
+| `address` | text | ✅ | | ✅ | Adresse du wallet MultiversX |
+| `is_connected` | yes/no | | | ✅ | Statut de connexion actuel |
+| `connection_date` | date | | | ✅ | Date de première connexion |
+| `last_activity` | date | ✅ | | ✅ | Dernière activité |
+| `network` | text | ✅ | | ✅ | Réseau : "devnet" ou "mainnet" |
+| `wallet_type` | text | | | ✅ | Type de wallet : "xportal" |
+| `user` | User | ✅ | ✅ | ✅ | Utilisateur propriétaire (unique) |
+| `total_transactions` | number | | | ✅ | Nombre total de transactions |
+| `total_cost_spent` | number | | | ✅ | Coût total dépensé en EGLD |
+| `balance_egld` | number | | | | Solde actuel en EGLD |
+| `balance_updated` | date | | | | Dernière mise à jour du solde |
+| `created_date` | date | ✅ | | ✅ | Date de création (built-in) |
+| `modified_date` | date | | | ✅ | Date de modification (built-in) |
+
+**Privacy Rules :**
+- Utilisateur peut voir/modifier sa propre connexion
+- Admin peut voir toutes les connexions
+- Autres utilisateurs ne peuvent pas voir
+
+### Data Type : Batch_Record
+
+**Description :** Enregistrement d'un traitement par lot
+
+**Fields :**
+
+| Field | Type | Index | Required | Description |
+|-------|------|-------|----------|-------------|
+| `batch_id` | text | ✅ | ✅ | Identifiant unique du lot |
+| `transaction_hash` | text | ✅ | ✅ | Hash de la transaction batch |
+| `total_items` | number | | ✅ | Nombre total d'éléments |
+| `successful_items` | number | | ✅ | Nombre d'éléments réussis |
+| `failed_items` | number | | ✅ | Nombre d'éléments échoués |
+| `pending_items` | number | | ✅ | Nombre d'éléments en attente |
+| `total_cost_egld` | number | | ✅ | Coût total en EGLD |
+| `status` | text | ✅ | ✅ | "processing", "completed", "partial", "failed" |
+| `batch_type` | text | ✅ | | Type de lot (achievements, levels, scores) |
+| `description` | text | | | Description du lot |
+| `user` | User | ✅ | ✅ | Utilisateur propriétaire |
+| `network` | text | | ✅ | Réseau MultiversX |
+| `explorer_url` | text | | | URL vers l'explorateur |
+| `processing_started` | date | | | Début du traitement |
+| `processing_completed` | date | | | Fin du traitement |
+| `created_date` | date | ✅ | ✅ | Date de création (built-in) |
+| `modified_date` | date | | ✅ | Date de modification (built-in) |
+
+### Data Type : Transaction_Log
+
+**Description :** Log détaillé des interactions avec le microservice
+
+**Fields :**
+
+| Field | Type | Index | Required | Description |
+|-------|------|-------|----------|-------------|
+| `log_id` | text | ✅ | ✅ | Identifiant unique du log |
+| `user` | User | ✅ | ✅ | Utilisateur concerné |
+| `action_type` | text | ✅ | ✅ | Type d'action (prepare, register, verify) |
+| `endpoint` | text | ✅ | ✅ | Endpoint API appelé |
+| `request_data` | text | | | Données de la requête (

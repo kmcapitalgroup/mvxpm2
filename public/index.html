@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiversX Timestamp Test Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #23d5ab 0%, #23a6d5 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            padding: 25px;
+            border: 2px solid #f0f0f0;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .test-section:hover {
+            border-color: #23d5ab;
+            box-shadow: 0 5px 15px rgba(35, 213, 171, 0.1);
+        }
+
+        .test-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #23d5ab;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #23d5ab 0%, #23a6d5 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(35, 213, 171, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .result-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #23d5ab;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .transaction-data {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .transaction-data h4 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .data-field {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: white;
+            border-radius: 5px;
+            word-break: break-all;
+        }
+
+        .data-label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        .copy-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #5a6268;
+        }
+
+        .instructions {
+            background: #e8f5e8;
+            border: 1px solid #c3e6cb;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .instructions h4 {
+            color: #155724;
+            margin-bottom: 15px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 MultiversX Timestamp Test</h1>
+            <p>Interface de test pour la signature de transactions avec xPortal</p>
+        </div>
+
+        <div class="content">
+            <!-- Section 1: Test de l'API -->
+            <div class="test-section">
+                <h3>📡 Test de l'API Timestamp</h3>
+                <div class="form-group">
+                    <label for="testData">Données à horodater:</label>
+                    <textarea id="testData" placeholder="Entrez vos données de test ici...">Document de test - Interface Web</textarea>
+                </div>
+                <button class="btn" onclick="createTimestamp()">Créer Timestamp</button>
+                <button class="btn btn-secondary" onclick="testApiHealth()">Test Santé API</button>
+                <div id="apiResult" class="result-box" style="display: none;"></div>
+            </div>
+
+            <!-- Section 2: Données de Transaction -->
+            <div class="test-section" id="transactionSection" style="display: none;">
+                <h3>📝 Données de Transaction Préparées</h3>
+                <div class="instructions">
+                    <h4>Instructions pour signer avec xPortal:</h4>
+                    <ol>
+                        <li>Copiez les données de transaction ci-dessous</li>
+                        <li>Ouvrez l'application xPortal sur votre téléphone</li>
+                        <li>Allez dans la section "Transactions" ou "Send"</li>
+                        <li>Collez les données de transaction</li>
+                        <li>Vérifiez les détails et signez la transaction</li>
+                        <li>Une fois signée, la transaction sera envoyée à la blockchain</li>
+                    </ol>
+                </div>
+                <div id="transactionData"></div>
+                <button class="btn" onclick="copyAllTransactionData()">📋 Copier Toutes les Données</button>
+            </div>
+
+            <!-- Section 3: Vérification -->
+            <div class="test-section">
+                <h3>🔍 Vérification de Timestamp</h3>
+                <div class="form-group">
+                    <label for="verifyHash">Hash de données à vérifier:</label>
+                    <input type="text" id="verifyHash" placeholder="Entrez le hash de données...">
+                </div>
+                <div class="form-group">
+                    <label for="verifyData">Données originales:</label>
+                    <textarea id="verifyData" placeholder="Entrez les données originales..."></textarea>
+                </div>
+                <button class="btn" onclick="verifyTimestamp()">Vérifier Timestamp</button>
+                <div id="verifyResult" class="result-box" style="display: none;"></div>
+            </div>
+
+            <!-- Section 4: Logs et Debug -->
+            <div class="test-section">
+                <h3>📊 Logs et Debug</h3>
+                <button class="btn btn-secondary" onclick="clearLogs()">Effacer les Logs</button>
+                <button class="btn btn-secondary" onclick="exportLogs()">Exporter les Logs</button>
+                <div id="debugLogs" class="result-box" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        const API_KEY = 'test-api-key-2024';
+        let currentTransactionData = null;
+        let logs = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            logs.push(logEntry);
+            
+            const debugLogs = document.getElementById('debugLogs');
+            debugLogs.style.display = 'block';
+            debugLogs.textContent = logs.join('\n');
+            debugLogs.scrollTop = debugLogs.scrollHeight;
+        }
+
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.innerHTML = '<div class="loading"></div>Chargement...';
+            element.className = 'result-box';
+        }
+
+        function showResult(elementId, content, type = 'success') {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.textContent = content;
+            element.className = `result-box ${type}`;
+        }
+
+        async function testApiHealth() {
+            log('Test de santé de l\'API...');
+            showLoading('apiResult');
+            
+            try {
+                const response = await fetch(`${API_BASE}/v1/health`, {
+                    headers: {
+                        'X-API-Key': API_KEY
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const message = `✅ API accessible et fonctionnelle\nStatus: ${result.status}\nUptime: ${result.uptime}s`;
+                    showResult('apiResult', message, 'success');
+                    log('Test de santé réussi');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${result.message || 'Erreur inconnue'}`);
+                }
+            } catch (error) {
+                const message = `❌ Erreur lors du test de santé: ${error.message}`;
+                showResult('apiResult', message, 'error');
+                log(`Erreur test de santé: ${error.message}`, 'error');
+            }
+        }
+
+        async function createTimestamp() {
+            const testData = document.getElementById('testData').value;
+            
+            if (!testData.trim()) {
+                showResult('apiResult', '❌ Veuillez entrer des données à horodater', 'error');
+                return;
+            }
+            
+            log('Création de timestamp...');
+            showLoading('apiResult');
+            
+            try {
+                const response = await fetch(`${API_BASE}/v1/timestamp`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify({ data: testData })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    const message = `✅ Timestamp créé avec succès\nHash: ${result.dataHash || 'N/A'}\nTimestamp: ${result.timestamp || 'N/A'}\nCoût estimé: ${result.estimatedCost?.egld || 'N/A'} EGLD`;
+                    showResult('apiResult', message, 'success');
+                    
+                    // Afficher les données de transaction
+                    if (result.transactionData) {
+                        currentTransactionData = result.transactionData;
+                        displayTransactionData(result);
+                        
+                        // Pré-remplir les champs de vérification
+                        document.getElementById('verifyHash').value = result.dataHash || '';
+                        document.getElementById('verifyData').value = testData;
+                    }
+                    
+                    log('Timestamp créé avec succès');
+                } else {
+                    throw new Error(result.message || 'Erreur lors de la création du timestamp');
+                }
+            } catch (error) {
+                const message = `❌ Erreur lors de la création: ${error.message}`;
+                showResult('apiResult', message, 'error');
+                log(`Erreur création timestamp: ${error.message}`, 'error');
+            }
+        }
+
+        function displayTransactionData(result) {
+            const section = document.getElementById('transactionSection');
+            const container = document.getElementById('transactionData');
+            
+            section.style.display = 'block';
+            
+            let html = '<div class="transaction-data">';
+            html += '<h4>📋 Données de Transaction pour xPortal</h4>';
+            
+            if (result.transactionData) {
+                const txData = result.transactionData;
+                
+                html += `<div class="data-field">`;
+                html += `<div class="data-label">Destinataire (To):</div>`;
+                html += `<div>${txData.receiver || 'N/A'} <button class="copy-btn" onclick="copyToClipboard('${txData.receiver || ''}')">Copier</button></div>`;
+                html += `</div>`;
+                
+                html += `<div class="data-field">`;
+                html += `<div class="data-label">Montant (Value):</div>`;
+                html += `<div>${txData.value || '0'} <button class="copy-btn" onclick="copyToClipboard('${txData.value || '0'}')">Copier</button></div>`;
+                html += `</div>`;
+                
+                html += `<div class="data-field">`;
+                html += `<div class="data-label">Données (Data):</div>`;
+                html += `<div style="word-break: break-all;">${txData.data || 'N/A'} <button class="copy-btn" onclick="copyToClipboard('${txData.data || ''}')">Copier</button></div>`;
+                html += `</div>`;
+                
+                html += `<div class="data-field">`;
+                html += `<div class="data-label">Gas Limit:</div>`;
+                html += `<div>${txData.gasLimit || 'N/A'} <button class="copy-btn" onclick="copyToClipboard('${txData.gasLimit || ''}')">Copier</button></div>`;
+                html += `</div>`;
+                
+                html += `<div class="data-field">`;
+                html += `<div class="data-label">Gas Price:</div>`;
+                html += `<div>${txData.gasPrice || 'N/A'} <button class="copy-btn" onclick="copyToClipboard('${txData.gasPrice || ''}')">Copier</button></div>`;
+                html += `</div>`;
+            }
+            
+            if (result.estimatedCost) {
+                html += `<div class="data-field">`;
+                html += `<div class="data-label">Coût Estimé:</div>`;
+                html += `<div>${result.estimatedCost.egld || 'N/A'} EGLD (${result.estimatedCost.usd || 'N/A'} USD)</div>`;
+                html += `</div>`;
+            }
+            
+            html += '</div>';
+            
+            if (result.instructions) {
+                html += `<div class="instructions">`;
+                html += `<h4>📱 Instructions:</h4>`;
+                html += `<p>${result.instructions}</p>`;
+                html += `</div>`;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                log(`Copié dans le presse-papiers: ${text.substring(0, 50)}...`);
+            }).catch(err => {
+                log(`Erreur lors de la copie: ${err.message}`, 'error');
+            });
+        }
+
+        function copyAllTransactionData() {
+            if (!currentTransactionData) {
+                log('Aucune donnée de transaction à copier', 'warning');
+                return;
+            }
+            
+            const dataString = JSON.stringify(currentTransactionData, null, 2);
+            copyToClipboard(dataString);
+        }
+
+        async function verifyTimestamp() {
+            const hash = document.getElementById('verifyHash').value;
+            const data = document.getElementById('verifyData').value;
+            
+            if (!hash.trim() || !data.trim()) {
+                showResult('verifyResult', '❌ Veuillez entrer le hash et les données à vérifier', 'error');
+                return;
+            }
+            
+            log('Vérification du timestamp...');
+            showLoading('verifyResult');
+            
+            try {
+                const response = await fetch(`${API_BASE}/v1/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify({ 
+                        dataHash: hash,
+                        data: data 
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const isValid = result.data?.valid || false;
+                    const status = isValid ? '✅ VALIDE' : '❌ INVALIDE';
+                    const message = `${status}\nHash: ${result.data?.originalHash || 'N/A'}\nBlockchain Hash: ${result.data?.blockchainHash || 'N/A'}`;
+                    
+                    showResult('verifyResult', message, isValid ? 'success' : 'error');
+                    log(`Vérification terminée: ${isValid ? 'VALIDE' : 'INVALIDE'}`);
+                } else {
+                    throw new Error(result.message || 'Erreur lors de la vérification');
+                }
+            } catch (error) {
+                const message = `❌ Erreur lors de la vérification: ${error.message}`;
+                showResult('verifyResult', message, 'error');
+                log(`Erreur vérification: ${error.message}`, 'error');
+            }
+        }
+
+        function clearLogs() {
+            logs = [];
+            document.getElementById('debugLogs').style.display = 'none';
+            log('Logs effacés');
+        }
+
+        function exportLogs() {
+            const logContent = logs.join('\n');
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `multiversx-test-logs-${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            log('Logs exportés');
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Interface de test MultiversX initialisée');
+            
+            // Test automatique de l'API au chargement
+            testApiHealth();
+        });
+    </script>
+</body>
+</html>

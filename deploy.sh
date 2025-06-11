@@ -74,6 +74,20 @@ if [[ ! -f ".env" ]]; then
     read -p "Appuyez sur Entrée après avoir configuré .env..."
 fi
 
+# Vérifier que le script principal existe
+if [[ ! -f "src/app.js" ]]; then
+    log_error "Le fichier src/app.js n'existe pas!"
+    log_error "Vérifiez que vous êtes dans le bon répertoire du projet."
+    exit 1
+fi
+
+# Vérifier que nous sommes dans le bon répertoire
+if [[ ! -f "package.json" ]]; then
+    log_error "Le fichier package.json n'existe pas!"
+    log_error "Vérifiez que vous êtes dans le répertoire racine du projet."
+    exit 1
+fi
+
 # Arrêter l'application si elle tourne déjà
 log_info "🛑 Arrêt de l'application existante..."
 pm2 delete multiversx-timestamp 2>/dev/null || true

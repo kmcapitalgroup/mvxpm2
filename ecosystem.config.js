@@ -1,7 +1,8 @@
 module.exports = {
   apps: [{
     name: 'multiversx-timestamp',
-    script: './src/app.js',
+    script: 'src/app.js',
+    cwd: process.cwd(),
     instances: 'max', // Utilise tous les CPU disponibles
     exec_mode: 'cluster',
     watch: false,
@@ -42,11 +43,11 @@ module.exports = {
       user: 'ubuntu',
       host: ['your-server-ip'],
       ref: 'origin/main',
-      repo: 'git@github.com:your-username/your-repo.git',
-      path: '/var/www/multiversx-timestamp',
+      repo: 'https://github.com/kmcapitalgroup/mvxpm2.git',
+      path: '/var/www/mvxpm2',
       'pre-deploy-local': '',
       'post-deploy': 'npm install --production && pm2 reload ecosystem.config.js --env production',
-      'pre-setup': ''
+      'pre-setup': 'git clone https://github.com/kmcapitalgroup/mvxpm2.git . && npm install --production'
     }
   }
 };

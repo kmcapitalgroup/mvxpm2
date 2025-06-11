@@ -347,6 +347,8 @@ public/mockServiceWorker.js
 *.md
 !README.md
 PM2_DEPLOYMENT_GUIDE.md
+PM2_TROUBLESHOOTING_GUIDE.md
+DEPLOYMENT_AUTOMATION_GUIDE.md
 API_TESTING_GUIDE.md
 cdc.md
 mvsign.txt

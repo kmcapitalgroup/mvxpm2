@@ -98,6 +98,125 @@ mkdir -p logs
 mkdir -p temp
 mkdir -p cache
 
+# Configuration automatique des ports et du firewall
+log_info "🔧 Configuration automatique des ports..."
+
+# Fonction pour configurer le firewall
+configure_firewall() {
+    local port=$1
+    local service_name=$2
+    
+    log_info "🔓 Ouverture du port $port pour $service_name..."
+    
+    # Vérifier si UFW est disponible (Ubuntu/Debian)
+    if command -v ufw &> /dev/null; then
+        log_info "📦 Configuration UFW (Ubuntu/Debian)..."
+        
+        # Activer UFW si pas déjà fait
+        if ! sudo ufw status | grep -q "Status: active"; then
+            log_info "🔥 Activation du firewall UFW..."
+            echo "y" | sudo ufw enable
+        fi
+        
+        # Ouvrir le port
+        sudo ufw allow $port/tcp comment "$service_name"
+        log_success "✅ Port $port ouvert via UFW"
+        
+    # Vérifier si firewalld est disponible (CentOS/RHEL)
+    elif command -v firewall-cmd &> /dev/null; then
+        log_info "📦 Configuration Firewalld (CentOS/RHEL)..."
+        
+        # Démarrer firewalld si pas déjà fait
+        if ! sudo firewall-cmd --state &> /dev/null; then
+            log_info "🔥 Démarrage du firewall..."
+            sudo systemctl start firewalld
+            sudo systemctl enable firewalld
+        fi
+        
+        # Ouvrir le port
+        sudo firewall-cmd --permanent --add-port=$port/tcp
+        sudo firewall-cmd --reload
+        log_success "✅ Port $port ouvert via Firewalld"
+        
+    # Vérifier si iptables est disponible
+    elif command -v iptables &> /dev/null; then
+        log_info "📦 Configuration iptables..."
+        
+        # Ajouter la règle iptables
+        sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT
+        
+        # Sauvegarder les règles selon le système
+        if command -v iptables-save &> /dev/null; then
+            if [ -f /etc/debian_version ]; then
+                sudo iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
+            elif [ -f /etc/redhat-release ]; then
+                sudo service iptables save 2>/dev/null || true
+            fi
+        fi
+        
+        log_success "✅ Port $port ouvert via iptables"
+    else
+        log_warning "⚠️  Aucun firewall détecté ou configuré"
+        log_info "💡 Le port $port devrait être accessible, mais vérifiez votre configuration réseau"
+    fi
+}
+
+# Configuration des ports nécessaires
+log_info "🌐 Configuration des ports pour MultiversX Timestamp Service..."
+
+# Port principal de l'application (3000 par défaut)
+APP_PORT=$(grep -E '^PORT=' .env 2>/dev/null | cut -d'=' -f2 || echo "3000")
+if [[ -z "$APP_PORT" ]]; then
+    APP_PORT=3000
+fi
+
+configure_firewall $APP_PORT "MultiversX Timestamp API"
+
+# Port SSH (22) - s'assurer qu'il reste ouvert
+configure_firewall 22 "SSH Access"
+
+# Port HTTP (80) - pour Nginx si utilisé
+if command -v nginx &> /dev/null; then
+    configure_firewall 80 "HTTP Nginx"
+    log_info "📦 Nginx détecté, port 80 configuré"
+fi
+
+# Port HTTPS (443) - pour Nginx SSL si utilisé
+if command -v nginx &> /dev/null && [ -d "/etc/nginx/ssl" ]; then
+    configure_firewall 443 "HTTPS Nginx SSL"
+    log_info "🔒 Configuration SSL détectée, port 443 configuré"
+fi
+
+# Ajouter HOST=0.0.0.0 dans .env si pas présent
+if ! grep -q "^HOST=" .env 2>/dev/null; then
+    log_info "🔧 Configuration HOST=0.0.0.0 dans .env..."
+    echo "" >> .env
+    echo "# Network Configuration" >> .env
+    echo "HOST=0.0.0.0" >> .env
+    log_success "✅ HOST=0.0.0.0 ajouté à .env"
+else
+    # Vérifier si HOST n'est pas localhost
+    CURRENT_HOST=$(grep "^HOST=" .env | cut -d'=' -f2)
+    if [[ "$CURRENT_HOST" == "localhost" || "$CURRENT_HOST" == "127.0.0.1" ]]; then
+        log_warning "⚠️  HOST configuré sur $CURRENT_HOST (accès local uniquement)"
+        log_info "🔧 Modification vers HOST=0.0.0.0 pour accès externe..."
+        sed -i 's/^HOST=.*/HOST=0.0.0.0/' .env
+        log_success "✅ HOST modifié vers 0.0.0.0"
+    fi
+fi
+
+# Afficher un résumé de la configuration réseau
+log_info "📋 Résumé de la configuration réseau:"
+echo "  - Port application: $APP_PORT"
+echo "  - Host: 0.0.0.0 (toutes interfaces)"
+echo "  - SSH: 22"
+if command -v nginx &> /dev/null; then
+    echo "  - HTTP: 80 (Nginx)"
+    if [ -d "/etc/nginx/ssl" ]; then
+        echo "  - HTTPS: 443 (Nginx SSL)"
+    fi
+fi
+
 # Nettoyer le cache npm et installer les dépendances
 log_info "🧹 Nettoyage du cache npm..."
 npm cache clean --force

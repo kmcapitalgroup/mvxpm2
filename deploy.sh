@@ -235,6 +235,77 @@ if [[ ! -f ".env" ]]; then
     log_info "✅ Configuration .env terminée, poursuite du déploiement..."
 fi
 
+# Configuration automatique du fichier .env avec les valeurs par défaut
+log_info "🔧 Configuration automatique du fichier .env..."
+
+# Fonction pour ajouter ou mettre à jour une variable dans .env
+update_env_var() {
+    local var_name=$1
+    local var_value=$2
+    local comment=$3
+    
+    if grep -q "^${var_name}=" .env; then
+        # Variable existe, vérifier si elle a une valeur
+        current_value=$(grep "^${var_name}=" .env | cut -d'=' -f2-)
+        if [[ -z "$current_value" ]]; then
+            log_info "📝 Mise à jour de $var_name avec valeur par défaut..."
+            sed -i "s/^${var_name}=.*/${var_name}=${var_value}/" .env
+        fi
+    else
+        # Variable n'existe pas, l'ajouter
+        log_info "➕ Ajout de $var_name..."
+        if [[ -n "$comment" ]]; then
+            echo "" >> .env
+            echo "# $comment" >> .env
+        fi
+        echo "${var_name}=${var_value}" >> .env
+    fi
+}
+
+# Configuration des variables serveur
+update_env_var "NODE_ENV" "production" "Server Configuration"
+update_env_var "PORT" "3000"
+update_env_var "API_KEYS" "put your api key here"
+
+# Configuration MultiversX
+update_env_var "MULTIVERSX_API_URL" "https://devnet-api.multiversx.com" "MultiversX Configuration"
+update_env_var "MULTIVERSX_GATEWAY_URL" "https://devnet-gateway.multiversx.com"
+update_env_var "MULTIVERSX_CHAIN_ID" "D"
+update_env_var "MULTIVERSX_WALLET_MNEMONIC" "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+update_env_var "MULTIVERSX_NETWORK" "devnet"
+
+# Configuration Redis
+update_env_var "REDIS_URL" "redis://localhost:6379" "Redis Configuration"
+update_env_var "REDIS_TTL" "86400"
+update_env_var "REDIS_PASSWORD" ""
+
+# Configuration Logging
+update_env_var "LOG_LEVEL" "info" "Logging Configuration"
+update_env_var "LOG_FILE" "./logs/app.log"
+update_env_var "LOG_MAX_SIZE" "20m"
+update_env_var "LOG_MAX_FILES" "14d"
+
+# Configuration Rate Limiting
+update_env_var "RATE_LIMIT_WINDOW" "900000" "Rate Limiting"
+update_env_var "RATE_LIMIT_MAX" "100"
+
+# Configuration Security
+update_env_var "CORS_ORIGIN" "*" "Security"
+update_env_var "HELMET_ENABLED" "true"
+
+# Configuration Webhook
+update_env_var "WEBHOOK_TIMEOUT" "5000" "Webhook Configuration"
+update_env_var "WEBHOOK_RETRY_ATTEMPTS" "3"
+
+# Configuration Gas
+update_env_var "GAS_LIMIT" "50000" "Gas Configuration"
+update_env_var "GAS_PRICE" "1000000000"
+
+# Configuration Monitoring
+update_env_var "HEALTH_CHECK_INTERVAL" "30000" "Monitoring"
+
+log_success "✅ Configuration .env mise à jour avec toutes les variables nécessaires"
+
 # Vérifier que le script principal existe
 if [[ ! -f "src/app.js" ]]; then
     log_error "Le fichier src/app.js n'existe pas!"

@@ -588,12 +588,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Documentation**: Check the API documentation
 - **Logs**: Check application logs for errors
 
-### Contact
-
-- **Email**: support@example.com
-- **GitHub**: [Repository Issues](https://github.com/example/multiversx-timestamp/issues)
-- **Documentation**: [API Docs](http://localhost:3000/api/v1)
 
 ---
 
-**Built with ❤️ for the MultiversX ecosystem**
+**Built with ❤️ by KMCPG for the MultiversX ecosystem**

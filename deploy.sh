@@ -125,14 +125,14 @@ pm2 save
 log_info "📊 Configuration du monitoring PM2..."
 echo
 log_info "Pour activer le monitoring PM2 Plus, vous avez besoin d'un lien de connexion."
-log_info "Exemple: pm2 link gwrvl5un8izeqlw i6xl439nshp47d8"
+log_info "<secret_key> <public_key>"
 echo
 read -p "Avez-vous un lien PM2 monitoring à configurer? (y/N): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo
     log_info "Collez votre commande PM2 link complète (ex: pm2 link secret_key public_key):"
-    read -p "pm2 link " PM2_LINK_PARAMS
+    read -p PM2_LINK_PARAMS
     
     if [[ -n "$PM2_LINK_PARAMS" ]]; then
         log_info "🔗 Configuration du lien PM2 monitoring..."

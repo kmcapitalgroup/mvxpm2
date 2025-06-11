@@ -445,7 +445,7 @@ Pour un monitoring avancé avec dashboard web, alertes et métriques détaillée
 pm2 link <secret_key> <public_key>
 
 # Exemple avec vos clés
-pm2 link gwrvl5un8izeqlw i6xl439nshp47d8
+pm2 link <secret_key> <public_key>
 ```
 
 #### Fonctionnalités PM2 Plus

@@ -30,6 +30,20 @@ module.exports = {
     min_uptime: '10s',
     max_restarts: 10,
     
+    // PM2 Plus monitoring configuration
+    pmx: true,
+    monitoring: {
+      http: true,
+      https: false,
+      port: false,
+      network: true,
+      ports: true
+    },
+    
+    // Custom metrics for PM2 Plus
+    instance_var: 'INSTANCE_ID',
+    source_map_support: true,
+    
     // Advanced PM2 features
     kill_timeout: 5000,
     listen_timeout: 3000,

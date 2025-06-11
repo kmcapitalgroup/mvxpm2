@@ -81,6 +81,27 @@ if [[ ! -f "src/app.js" ]]; then
     exit 1
 fi
 
+# Vérifier la version de Node.js pour compatibilité
+log_info "📋 Vérification de la version Node.js..."
+NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
+log_info "Version Node.js détectée: v$NODE_VERSION"
+
+if [ "$NODE_VERSION" -lt 14 ]; then
+    log_warning "Attention: Node.js v$NODE_VERSION détecté"
+    log_warning "Certaines dépendances peuvent nécessiter Node.js 14+"
+    log_info "🔄 Exécution du script de mise à jour des dépendances..."
+    
+    if [ -f "update-dependencies.sh" ]; then
+        chmod +x update-dependencies.sh
+        ./update-dependencies.sh
+    else
+        log_error "Script update-dependencies.sh non trouvé"
+        log_info "💡 Installation manuelle des dépendances compatibles..."
+        rm -rf node_modules package-lock.json
+        npm install
+    fi
+fi
+
 # Vérifier que nous sommes dans le bon répertoire
 if [[ ! -f "package.json" ]]; then
     log_error "Le fichier package.json n'existe pas!"
@@ -100,6 +121,37 @@ pm2 start ecosystem.config.js --env $ENV
 log_info "💾 Sauvegarde de la configuration PM2..."
 pm2 save
 
+# Configuration du monitoring PM2 (optionnel)
+log_info "📊 Configuration du monitoring PM2..."
+echo
+log_info "Pour activer le monitoring PM2 Plus, vous avez besoin d'un lien de connexion."
+log_info "Exemple: pm2 link gwrvl5un8izeqlw i6xl439nshp47d8"
+echo
+read -p "Avez-vous un lien PM2 monitoring à configurer? (y/N): " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo
+    log_info "Collez votre commande PM2 link complète (ex: pm2 link secret_key public_key):"
+    read -p "pm2 link " PM2_LINK_PARAMS
+    
+    if [[ -n "$PM2_LINK_PARAMS" ]]; then
+        log_info "🔗 Configuration du lien PM2 monitoring..."
+        pm2 link $PM2_LINK_PARAMS
+        
+        if [ $? -eq 0 ]; then
+            log_success "✅ Monitoring PM2 configuré avec succès!"
+            log_info "🌐 Accédez à votre dashboard: https://app.pm2.io"
+        else
+            log_error "❌ Erreur lors de la configuration du monitoring"
+            log_info "💡 Vérifiez vos clés et réessayez manuellement: pm2 link $PM2_LINK_PARAMS"
+        fi
+    else
+        log_warning "Aucun paramètre fourni, monitoring non configuré"
+    fi
+else
+    log_info "Monitoring PM2 non configuré (vous pouvez le faire plus tard avec: pm2 link <secret> <public>)"
+fi
+
 # Configurer le démarrage automatique
 log_info "🔄 Configuration du démarrage automatique..."
 pm2 startup
@@ -114,8 +166,11 @@ log_info "📝 Commandes utiles:"
 echo "  - Voir les logs: pm2 logs multiversx-timestamp"
 echo "  - Redémarrer: pm2 restart multiversx-timestamp"
 echo "  - Arrêter: pm2 stop multiversx-timestamp"
-echo "  - Monitoring: pm2 monit"
+echo "  - Monitoring local: pm2 monit"
 echo "  - Status: pm2 status"
+echo "  - Dashboard web: https://app.pm2.io (si monitoring configuré)"
+echo "  - Configurer monitoring: pm2 link <secret_key> <public_key>"
+echo "  - Déconnecter monitoring: pm2 unlink"
 
 read -p "Voulez-vous voir les logs en temps réel? (y/N): " -n 1 -r
 echo

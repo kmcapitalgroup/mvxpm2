@@ -288,6 +288,11 @@ vercel.json
 update.sh
 monitor.sh
 
+# Scripts de déploiement et utilitaires
+deploy.sh
+update-dependencies.sh
+setup-pm2-monitoring.sh
+
 # Redis configuration
 redis.conf/
 dump.rdb
@@ -349,6 +354,8 @@ public/mockServiceWorker.js
 PM2_DEPLOYMENT_GUIDE.md
 PM2_TROUBLESHOOTING_GUIDE.md
 DEPLOYMENT_AUTOMATION_GUIDE.md
+NODE_COMPATIBILITY_FIX.md
+PM2_MONITORING_GUIDE.md
 API_TESTING_GUIDE.md
 cdc.md
 mvsign.txt

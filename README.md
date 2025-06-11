@@ -409,6 +409,65 @@ logger.info('Timestamp created', {
 - **Readiness**: Application can serve traffic
 - **Startup**: Application has completed initialization
 
+### Surveillance PM2 Locale
+```bash
+# Interface de monitoring
+pm2 monit
+
+# Statut des processus
+pm2 status
+
+# Logs en temps réel
+pm2 logs multiversx-timestamp
+
+# Logs avec filtre
+pm2 logs multiversx-timestamp --lines 100
+```
+
+### 🌐 Monitoring PM2 Plus (Dashboard Web)
+
+Pour un monitoring avancé avec dashboard web, alertes et métriques détaillées :
+
+#### Configuration Automatique
+```bash
+# Pendant le déploiement
+./deploy.sh
+# Le script vous demandera votre lien PM2 monitoring
+
+# Ou configuration séparée
+./setup-pm2-monitoring.sh
+```
+
+#### Configuration Manuelle
+```bash
+# 1. Obtenez vos clés sur https://app.pm2.io
+# 2. Configurez le lien
+pm2 link <secret_key> <public_key>
+
+# Exemple avec vos clés
+pm2 link gwrvl5un8izeqlw i6xl439nshp47d8
+```
+
+#### Fonctionnalités PM2 Plus
+- 📊 **Métriques temps réel** : CPU, RAM, réseau
+- 📝 **Logs centralisés** : Recherche et filtrage
+- 🚨 **Alertes automatiques** : Email/SMS/Slack
+- 📈 **Historique performance** : Graphiques détaillés
+- 🔄 **Gestion à distance** : Redémarrage, déploiement
+- 👥 **Collaboration équipe** : Partage d'accès
+
+#### Commandes Monitoring
+```bash
+# Vérifier le statut de connexion
+pm2 info
+
+# Déconnecter le monitoring
+pm2 unlink
+
+# Dashboard web
+# https://app.pm2.io
+```
+
 ## 🧪 Testing
 
 ### Run Tests

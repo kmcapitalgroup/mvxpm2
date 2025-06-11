@@ -46,6 +46,14 @@ if ! command -v npm &> /dev/null; then
     # Détecter le système d'exploitation et installer Node.js/npm
     if [ -f /etc/debian_version ]; then
         log_info "📦 Installation de Node.js et npm via NodeSource (Ubuntu/Debian)..."
+        
+        # Supprimer les anciens packages Node.js pour éviter les conflits
+        log_info "🧹 Suppression des anciens packages Node.js..."
+        sudo apt-get remove -y nodejs npm libnode-dev node-gyp
+        sudo apt-get autoremove -y
+        sudo apt-get autoclean
+        
+        # Installer Node.js 18 via NodeSource
         curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
         sudo apt-get install -y nodejs
     elif [ -f /etc/redhat-release ]; then
